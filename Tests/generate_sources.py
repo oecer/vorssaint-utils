@@ -733,7 +733,8 @@ def main():
           + "final class Service: State {\n"
           + "".join(declaration(updates, prefix).replace("private func", "func", 1)
                     for prefix in ["    func skipVersion(", "    func excludeApp(",
-                                   "    private func setRule(", "    func removeRule(",
+                                   "    private func setRule(", "    private func storeRule(",
+                                   "    func removeRule(",
                                    "    private func saveRules(", "    private func reloadRules(",
                                    "    private func applyRules(", "    private func finishCheck(",
                                    "    private static func announcedIDs(", "    private static func saveAnnouncedIDs("])

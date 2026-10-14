@@ -177,7 +177,7 @@ enum AppUpdateRulesContract {
                      "publisher findings preserve portable app identity")
         for language in AppLanguage.allCases {
             let text = FeatureStrings.appUpdates(language)
-            suite.expect([text.skipVersionFormat, text.excludeApp, text.rulesTitle, text.skippedVersionFormat,
+            suite.expect([text.skipVersionFormat, text.excludeApp, text.rulesTitle, text.addException, text.skippedVersionFormat,
                           text.excludedApp, text.removeRule, text.rulesHint, text.noVisibleUpdates].allSatisfy { !$0.isEmpty },
                          "update rule controls are localized for \(language)")
             suite.expect(text.skipVersionFormat.contains("%@") && text.skippedVersionFormat.contains("%@"),

@@ -3,6 +3,7 @@
 
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The app update list, shared by the Settings page and the menu bar panel so
 /// both look and behave the same. `compact` shrinks it for the panel.
@@ -38,7 +39,7 @@ struct AppUpdatesListView: View {
                 list
                 if updates.selectableCount > 0 { updateButton }
             }
-            if !updates.rules.isEmpty { rulesSection }
+            rulesSection
             if coverageIncomplete {
                 incompleteCheck
             }
@@ -163,11 +164,24 @@ struct AppUpdatesListView: View {
     private var rulesSection: some View {
         DisclosureGroup(text.rulesTitle) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(text.rulesHint)
-                    .font(.system(size: compact ? 9.5 : 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                if compact {
+                HStack(alignment: .top, spacing: 8) {
+                    Text(text.rulesHint)
+                        .font(.system(size: compact ? 9.5 : 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Button(action: chooseExceptionApp) {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(isBusy)
+                    .help(text.addException)
+                    .accessibilityLabel(text.addException)
+                }
+                if updates.rules.isEmpty {
+                    EmptyView()
+                } else if compact {
                     ScrollView { ruleRows }
                         .frame(height: CGFloat(min(updates.rules.count, 3)) * 54)
                 } else {
@@ -177,6 +191,18 @@ struct AppUpdatesListView: View {
             .padding(.top, 4)
         }
         .font(.system(size: compact ? 10.5 : 12))
+    }
+
+    private func chooseExceptionApp() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.message = text.addException
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        updates.addExclusion(appAt: url)
     }
 
     private var ruleRows: some View {
@@ -296,6 +322,20 @@ struct AppUpdatesListView: View {
             .controlSize(.small)
             .disabled(isBusy)
             .help(actionHint(for: item))
+
+            // The context menu alone was easy to miss; same actions, visible.
+            if item.bundleID != nil {
+                Menu {
+                    ruleActions(for: item)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(text.excludeApp)
+                .accessibilityLabel(text.excludeApp)
+            }
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 5)
@@ -304,15 +344,18 @@ struct AppUpdatesListView: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color.primary.opacity(0.035))
         )
-        .contextMenu {
-            if item.bundleID != nil {
-                Button(String(format: text.skipVersionFormat, item.latestVersion)) {
-                    updates.skipVersion(item)
-                }
-                .disabled(isBusy)
-                Button(text.excludeApp) { updates.excludeApp(item) }
-                    .disabled(isBusy)
+        .contextMenu { ruleActions(for: item) }
+    }
+
+    @ViewBuilder
+    private func ruleActions(for item: AppUpdatesSupport.Item) -> some View {
+        if item.bundleID != nil {
+            Button(String(format: text.skipVersionFormat, item.latestVersion)) {
+                updates.skipVersion(item)
             }
+            .disabled(isBusy)
+            Button(text.excludeApp) { updates.excludeApp(item) }
+                .disabled(isBusy)
         }
     }
 
