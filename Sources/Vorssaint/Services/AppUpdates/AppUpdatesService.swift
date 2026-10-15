@@ -581,7 +581,8 @@ final class AppUpdatesService: ObservableObject {
     private func storeRule(bundleID: String, name: String, version: String?) {
         // Same shape `decodedRules` accepts, so a rule saved now survives a reload.
         guard !bundleID.isEmpty, bundleID.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
-              !bundleID.contains("/") else { return }
+              !bundleID.contains("/"),
+              !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         let rule = AppUpdatesSupport.UpdateRule(bundleID: bundleID, name: name, version: version)
         saveRules(rules.filter { $0.bundleID != bundleID } + [rule])
     }

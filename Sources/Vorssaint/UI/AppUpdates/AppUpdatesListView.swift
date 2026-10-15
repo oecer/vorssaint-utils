@@ -11,6 +11,7 @@ struct AppUpdatesListView: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var updates = AppUpdatesService.shared
     @ObservedObject private var homebrew = HomebrewManager.shared
+    @Environment(\.notchPresentation) private var inNotch
     @AppStorage(DefaultsKey.appUpdatesIncludeOnlineCatalog)
     private var includeOnlineCatalog = true
     @AppStorage(DefaultsKey.appUpdatesIncludeAppStore)
@@ -19,6 +20,8 @@ struct AppUpdatesListView: View {
     var compact = false
 
     private var text: AppUpdateStrings { FeatureStrings.appUpdates(l10n.language) }
+    /// The row menu holds both rule actions, so it is named for neither.
+    private var moreOptions: String { FeatureStrings.mouseClickDebounce(l10n.language).moreOptions }
     private var isBusy: Bool { updates.isChecking || homebrew.operation != nil }
     private var storeCoverageIncomplete: Bool {
         includeAppStore && !updates.appStoreAvailable
@@ -200,6 +203,15 @@ struct AppUpdatesListView: View {
         panel.allowedContentTypes = [.applicationBundle]
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.message = text.addException
+        // The island floats above the modal panel level, so there the picker
+        // opens on its own just above it, like the island's alerts.
+        guard !inNotch else {
+            DispatchQueue.main.async {
+                guard panel.runAboveIsland() == .OK, let url = panel.url else { return }
+                updates.addExclusion(appAt: url)
+            }
+            return
+        }
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return }
         updates.addExclusion(appAt: url)
@@ -324,17 +336,22 @@ struct AppUpdatesListView: View {
             .help(actionHint(for: item))
 
             // The context menu alone was easy to miss; same actions, visible.
-            if item.bundleID != nil {
+            // The panel row has no width to spare for it (its badge and
+            // version would truncate), so there the context menu carries them.
+            if !compact, item.bundleID != nil {
                 Menu {
                     ruleActions(for: item)
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
                 .menuStyle(.borderlessButton)
+                // The borderless popup ignores the label's foreground style;
+                // its tint is what greys the glyph like the header icons.
+                .tint(.secondary)
                 .menuIndicator(.hidden)
                 .fixedSize()
-                .help(text.excludeApp)
-                .accessibilityLabel(text.excludeApp)
+                .help(moreOptions)
+                .accessibilityLabel("\(moreOptions): \(item.name)")
             }
         }
         .padding(.horizontal, 7)
